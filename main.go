@@ -48,7 +48,7 @@ func handleNotification(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
+	fmt.Println("Notification sent to webhook:", requestBody.WebhookURL)
 	w.WriteHeader(http.StatusOK)
 }
 
