@@ -1,3 +1,5 @@
+![image](https://github.com/hihumikan/lhetans_go/assets/26848713/c4ef8ced-64d0-4aed-b479-7e9a682455e9)
+
 # Location-based Home ETA Notification System
 
 帰宅報告(帰宅予想時間と現在位置)をwebhooksに通知する奴のバックエンドサーバー
