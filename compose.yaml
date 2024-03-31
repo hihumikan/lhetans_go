@@ -1,0 +1,10 @@
+services:
+  app:
+    container_name: lhetansgo
+    image: ghcr.io/hihumikan/lhetansgo:main
+    build: .
+    volumes:
+      - .:/app
+    ports:
+      - 3000:3000
+    restart: always
