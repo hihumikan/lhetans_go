@@ -65,7 +65,7 @@ func handleNotification(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Route Summary:", route)
 	fmt.Println("Estimated Duration:", duration)
 
-	err = sendWebhookNotification(requestBody.WebhookURL, duration)
+	err = sendWebhookNotification(requestBody.WebhookURL, duration, requestBody.HomeLocation, requestBody.CurrentLocation)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -106,12 +106,12 @@ func getRouteInfo(homeLocation string, currentLocation string, travelMode string
 	fmt.Println("Duration:", duration)
 	return duration, route[0], nil
 }
-func sendWebhookNotification(webhookURL string, duration string) error {
+func sendWebhookNotification(webhookURL string, duration string, homeLocation string, currentLocation string) error {
 
 	var discord Discord
 	discord.Username = "Google Maps API"
 	discord.AvatarUrl = "https://asset.watch.impress.co.jp/img/ktw/docs/1238/736/icon_l.png"
-	discord.Content = "Estimated duration: " + duration
+	discord.Content = fmt.Sprintf("Estimated duration: %s\nHome location: %s\nCurrent location: %s", duration, homeLocation, currentLocation)
 
 	discord_json, _ := json.Marshal(discord)
 
