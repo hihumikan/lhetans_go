@@ -62,11 +62,7 @@ func handleNotification(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = sendWebhookNotification(requestBody.WebhookURL, duration, requestBody.HomeLocation, requestBody.CurrentLocation)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	go sendWebhookNotification(requestBody.WebhookURL, duration, requestBody.HomeLocation, requestBody.CurrentLocation)
 
 	fmt.Println("Notification sent to webhook:", requestBody.WebhookURL)
 	w.WriteHeader(http.StatusOK)
@@ -102,24 +98,26 @@ func getRouteInfo(homeLocation string, currentLocation string, travelMode string
 	duration := route[0].Legs[0].Duration.String()
 	return duration, nil
 }
-func sendWebhookNotification(webhookURL string, duration string, homeLocation string, currentLocation string) error {
 
+func sendWebhookNotification(webhookURL string, duration string, homeLocation string, currentLocation string) {
 	var discord Discord
 	discord.Username = "Google Maps API"
 	discord.AvatarUrl = "https://asset.watch.impress.co.jp/img/ktw/docs/1238/736/icon_l.png"
 	discord.Content = fmt.Sprintf("Estimated duration: %s\nHome location: %s\nCurrent location: %s", duration, homeLocation, currentLocation)
 
-	discord_json, _ := json.Marshal(discord)
+	discordJSON, _ := json.Marshal(discord)
 
-	res, err := http.Post(
-		webhookURL,
-		"application/json",
-		bytes.NewBuffer(discord_json),
-	)
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
-
-	return nil
+	go func() {
+		res, err := http.Post(
+			webhookURL,
+			"application/json",
+			bytes.NewBuffer(discordJSON),
+		)
+		if err != nil {
+			log.Printf("Error sending webhook notification: %v", err)
+			return
+		}
+		defer res.Body.Close()
+		fmt.Println("Notification sent to webhook:", webhookURL)
+	}()
 }
