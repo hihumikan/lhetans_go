@@ -56,14 +56,11 @@ func handleNotification(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Println("Request body:", requestBody)
 
-	duration, route, err := getRouteInfo(requestBody.HomeLocation, requestBody.CurrentLocation, requestBody.TravelMode)
+	duration, err := getRouteInfo(requestBody.HomeLocation, requestBody.CurrentLocation, requestBody.TravelMode)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	fmt.Println("Route Summary:", route)
-	fmt.Println("Estimated Duration:", duration)
 
 	err = sendWebhookNotification(requestBody.WebhookURL, duration, requestBody.HomeLocation, requestBody.CurrentLocation)
 	if err != nil {
@@ -75,15 +72,15 @@ func handleNotification(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func getRouteInfo(homeLocation string, currentLocation string, travelMode string) (string, maps.Route, error) {
+func getRouteInfo(homeLocation string, currentLocation string, travelMode string) (string, error) {
 	apiKey := os.Getenv("GOOGLE_MAPS_API_KEY")
 	if apiKey == "" {
-		return "", maps.Route{}, fmt.Errorf("API key not found")
+		return "", fmt.Errorf("API key not found")
 	}
 
 	c, err := maps.NewClient(maps.WithAPIKey(apiKey))
 	if err != nil {
-		return "", maps.Route{}, err
+		return "", err
 	}
 
 	r := &maps.DirectionsRequest{
@@ -95,16 +92,15 @@ func getRouteInfo(homeLocation string, currentLocation string, travelMode string
 
 	route, _, err := c.Directions(context.Background(), r)
 	if err != nil {
-		return "", maps.Route{}, err
+		return "", err
 	}
 
 	if len(route) == 0 || len(route[0].Legs) == 0 {
-		return "", maps.Route{}, fmt.Errorf("no route found")
+		return "", fmt.Errorf("no route found")
 	}
 
 	duration := route[0].Legs[0].Duration.String()
-	fmt.Println("Duration:", duration)
-	return duration, route[0], nil
+	return duration, nil
 }
 func sendWebhookNotification(webhookURL string, duration string, homeLocation string, currentLocation string) error {
 
@@ -125,7 +121,5 @@ func sendWebhookNotification(webhookURL string, duration string, homeLocation st
 	}
 	defer res.Body.Close()
 
-	fmt.Println("Notification sent to webhook:", webhookURL)
-	fmt.Println("Estimated duration:", duration)
 	return nil
 }
