@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
-	"github.com/kr/pretty"
+	"github.com/joho/godotenv"
 	"googlemaps.github.io/maps"
 )
 
@@ -32,11 +33,15 @@ type Discord struct {
 type RequestBody struct {
 	HomeLocation    string `json:"home_location"`
 	CurrentLocation string `json:"current_location"`
-	TravelMode      int    `json:"travel_mode"`
+	TravelMode      string `json:"travel_mode"`
 	WebhookURL      string `json:"webhook_url"`
 }
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Error loading .env file: %v", err)
+	}
 
 	http.HandleFunc("/notification", handleNotification)
 	http.ListenAndServe(":3000", nil)
@@ -50,57 +55,74 @@ func handleNotification(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Println("Request body:", requestBody)
-	duration, err := getRouteDuration(requestBody.HomeLocation, requestBody.CurrentLocation, requestBody.TravelMode)
+
+	duration, route, err := getRouteInfo(requestBody.HomeLocation, requestBody.CurrentLocation, requestBody.TravelMode)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	fmt.Println("Route Summary:", route)
+	fmt.Println("Estimated Duration:", duration)
 
 	err = sendWebhookNotification(requestBody.WebhookURL, duration)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	fmt.Println("Notification sent to webhook:", requestBody.WebhookURL)
 	w.WriteHeader(http.StatusOK)
 }
 
-func getRouteDuration(homeLocation string, currentLocation string, travelMode int) (string, error) {
-	c, err := maps.NewClient(maps.WithAPIKey("YOUR_API_KEY"))
+func getRouteInfo(homeLocation string, currentLocation string, travelMode string) (string, maps.Route, error) {
+	apiKey := os.Getenv("GOOGLE_MAPS_API_KEY")
+	if apiKey == "" {
+		return "", maps.Route{}, fmt.Errorf("API key not found")
+	}
+
+	c, err := maps.NewClient(maps.WithAPIKey(apiKey))
 	if err != nil {
-		log.Fatalf("fatal error: %s", err)
+		return "", maps.Route{}, err
 	}
+
 	r := &maps.DirectionsRequest{
-		Origin:      "Sydney",
-		Destination: "Perth",
+		Origin:        homeLocation,
+		Destination:   currentLocation,
+		DepartureTime: "now",
+		Mode:          maps.Mode(travelMode),
 	}
+
 	route, _, err := c.Directions(context.Background(), r)
 	if err != nil {
-		log.Fatalf("fatal error: %s", err)
+		return "", maps.Route{}, err
 	}
 
-	pretty.Println(route)
-	return "1 hour", nil
-}
+	if len(route) == 0 || len(route[0].Legs) == 0 {
+		return "", maps.Route{}, fmt.Errorf("no route found")
+	}
 
+	duration := route[0].Legs[0].Duration.String()
+	fmt.Println("Duration:", duration)
+	return duration, route[0], nil
+}
 func sendWebhookNotification(webhookURL string, duration string) error {
 
 	var discord Discord
-	discord.Username = "Mr. Hogehoge"
-	discord.AvatarUrl = "https://github.com/qiita.png"
-	discord.Content = "Hello World!"
+	discord.Username = "Google Maps API"
+	discord.AvatarUrl = "https://asset.watch.impress.co.jp/img/ktw/docs/1238/736/icon_l.png"
+	discord.Content = "Estimated duration: " + duration
 
-	// encode json
 	discord_json, _ := json.Marshal(discord)
-	fmt.Println(string(discord_json))
 
-	// discord webhook_url
-	webhook_url := ""
-	res, _ := http.Post(
-		webhook_url,
+	res, err := http.Post(
+		webhookURL,
 		"application/json",
 		bytes.NewBuffer(discord_json),
 	)
+	if err != nil {
+		return err
+	}
 	defer res.Body.Close()
 
 	fmt.Println("Notification sent to webhook:", webhookURL)
