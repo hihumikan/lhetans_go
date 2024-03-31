@@ -1,5 +1,5 @@
 services:
-  lhetansgos:
+  lhetansgo:
     build:
       context: .
       dockerfile: ./Dockerfile
