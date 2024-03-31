@@ -8,6 +8,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/joho/godotenv"
 	"googlemaps.github.io/maps"
@@ -43,8 +46,34 @@ func main() {
 		log.Fatalf("Error loading .env file: %v", err)
 	}
 
+	server := &http.Server{
+		Addr:    ":3000",
+		Handler: http.DefaultServeMux,
+	}
+
 	http.HandleFunc("/notification", handleNotification)
-	http.ListenAndServe(":3000", nil)
+
+	go func() {
+		log.Println("Starting server on :3000")
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Error starting server: %v", err)
+		}
+	}()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	sig := <-sigChan
+	log.Printf("Received signal %s. Shutting down...\n", sig)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(ctx); err != nil {
+		log.Fatalf("Error shutting down server: %v", err)
+	}
+
+	log.Println("Server shutdown completed")
 }
 
 func handleNotification(w http.ResponseWriter, r *http.Request) {
