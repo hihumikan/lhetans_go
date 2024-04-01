@@ -132,7 +132,7 @@ func sendWebhookNotification(webhookURL string, duration string, homeLocation st
 	var discord Discord
 	discord.Username = "Google Maps API"
 	discord.AvatarUrl = "https://asset.watch.impress.co.jp/img/ktw/docs/1238/736/icon_l.png"
-	discord.Content = fmt.Sprintf("所要時間: %s\n予想到着時刻(車): %s\n予想到着時刻(電車): %s\n現在位置: %s\n目的地: %s", duration, calculateArrivalTime(duration), calculateTrainArrivalTime(duration), formatLocationURL(homeLocation), formatLocationURL(currentLocation))
+	discord.Content = fmt.Sprintf("所要時間: %s\n予想到着時刻(車): %s\n予想到着時刻(電車): %s\n現在位置: %s\n目的地: %s", duration, calculateArrivalTime(duration), calculateTrainArrivalTime(duration), formatLocationURL(currentLocation), formatLocationURL(homeLocation))
 
 	discordJSON, _ := json.Marshal(discord)
 
